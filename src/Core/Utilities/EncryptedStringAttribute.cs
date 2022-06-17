@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using Bit.Core.Enums;
 
 namespace Bit.Core.Utilities
 {
@@ -8,12 +10,33 @@ namespace Bit.Core.Utilities
     /// </summary>
     public class EncryptedStringAttribute : ValidationAttribute
     {
+        private static readonly Dictionary<EncryptionType, int> _encryptionTypeRules = new()
+        {
+            { EncryptionType.AesCbc256_B64, 1 },
+            { EncryptionType.AesCbc128_HmacSha256_B64, 3 },
+            { EncryptionType.AesCbc256_HmacSha256_B64, 3 },
+            { EncryptionType.Rsa2048_OaepSha256_B64, 1 },
+            { EncryptionType.Rsa2048_OaepSha1_B64, 1 },
+            { EncryptionType.Rsa2048_OaepSha256_HmacSha256_B64, 2 },
+            { EncryptionType.Rsa2048_OaepSha1_HmacSha256_B64, 2 },
+        };
+
+
         public EncryptedStringAttribute()
             : base("{0} is not a valid encrypted string.")
         { }
 
         public override bool IsValid(object value)
         {
+            if (value is string stringVal)
+            {
+                return IsValidCore(stringVal);
+            }
+            else
+            {
+                return IsValidCore(value?.ToString());
+            }
+
             if (value == null)
             {
                 return true;
@@ -21,7 +44,7 @@ namespace Bit.Core.Utilities
 
             try
             {
-                var encString = value?.ToString();
+                var encString = value.ToString();
                 if (string.IsNullOrWhiteSpace(encString))
                 {
                     return false;
@@ -125,7 +148,7 @@ namespace Bit.Core.Utilities
 
                         break;
                     default:
-                        return false;
+                        throw new InvalidOperationException("This should be unreachable based on the previous switch statement");
                 }
             }
             catch
@@ -134,6 +157,36 @@ namespace Bit.Core.Utilities
             }
 
             return true;
+        }
+        internal static bool IsValidCore(ReadOnlySpan<char> value)
+        {
+            if (!value.TrySplitBy('.', out var head, out var rest))
+            {
+                // We could not get a header value of the encryption type
+                // This is our slow path because we have to evaluate the amount of parts it has
+                // TODO: Implement
+            }
+
+            EncryptionType encryptionType;
+            if (!byte.TryParse(head, out var encryptionTypeByte))
+            {
+                // Cannot read it as a number attempt to read it as a string
+                // This is our slow path
+                if (!Enum.TryParse(head.ToString(), out encryptionType))
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                // Just cast to the enum and we validate it's a valid enum by if it exists in the dictionary or not
+                encryptionType = (EncryptionType)encryptionTypeByte;
+            }
+
+            if (!_encryptionTypeRules.TryGetValue(encryptionType, out var requiredSections))
+            {
+                
+            }
         }
     }
 }
