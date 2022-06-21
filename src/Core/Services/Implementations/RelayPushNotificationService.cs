@@ -181,7 +181,7 @@ namespace Bit.Core.Services
             };
 
             await AddCurrentContextAsync(request, excludeCurrentContext);
-            await SendAsync(HttpMethod.Post, "push/send", request);
+            await SafeSendAsync(request);
         }
 
         private async Task SendPayloadToOrganizationAsync(Guid orgId, PushType type, object payload, bool excludeCurrentContext)
@@ -194,7 +194,7 @@ namespace Bit.Core.Services
             };
 
             await AddCurrentContextAsync(request, excludeCurrentContext);
-            await SendAsync(HttpMethod.Post, "push/send", request);
+            await SafeSendAsync(request);
         }
 
         private async Task AddCurrentContextAsync(PushSendRequestModel request, bool addIdentifier)
@@ -213,6 +213,15 @@ namespace Bit.Core.Services
                     request.Identifier = currentContext.DeviceIdentifier;
                 }
             }
+        }
+
+        private async Task SafeSendAsync<T>(T request)
+        {
+            try
+            {
+                await SendAsync(HttpMethod.Post, "push/send", request);
+            }
+            catch { }
         }
 
         public Task SendPayloadToUserAsync(string userId, PushType type, object payload, string identifier,

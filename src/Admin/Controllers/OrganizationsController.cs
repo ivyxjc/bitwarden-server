@@ -196,9 +196,19 @@ namespace Bit.Admin.Controllers
                 try
                 {
                     var config = connection.GetConfig<BillingSyncConfig>();
-                    await _syncSponsorshipsCommand.SyncOrganization(id, config.CloudOrganizationId, connection);
-                    TempData["ConnectionActivated"] = id;
-                    TempData["ConnectionError"] = null;
+                    var syncedSponsorshipsAmount = await _syncSponsorshipsCommand.SyncOrganization(id, config.CloudOrganizationId, connection);
+                    if (syncedSponsorshipsAmount == 0)
+                    {
+                        TempData["ConnectionActivated"] = null;
+                        TempData["ConnectionError"] = null;
+                        TempData["ConnectionWarning"] = "No sponsorships to sync.";
+                    }
+                    else
+                    {
+                        TempData["ConnectionActivated"] = id;
+                        TempData["ConnectionError"] = null;
+                    }
+                    
                 }
                 catch (Exception ex)
                 {
@@ -217,6 +227,5 @@ namespace Bit.Admin.Controllers
             }
             return RedirectToAction("Index");
         }
-
     }
 }

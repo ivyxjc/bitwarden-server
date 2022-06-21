@@ -59,7 +59,7 @@ namespace Bit.Api.Jobs
                         try
                         {
                             var config = connection.GetConfig<BillingSyncConfig>();
-                            await syncCommand.SyncOrganization(org.Id, config.CloudOrganizationId, connection);
+                            _ = await syncCommand.SyncOrganization(org.Id, config.CloudOrganizationId, connection);
                         }
                         catch (Exception ex)
                         {

@@ -8,7 +8,8 @@ namespace Bit.Core.OrganizationFeatures.OrganizationSponsorships.FamiliesForEnte
 {
     public interface ISelfHostedSyncSponsorshipsCommand
     {
-        Task SyncOrganization(Guid organizationId, Guid cloudOrganizationId, OrganizationConnection billingSyncConnection);
+        /// <returns>Returns the amount of sponsorships that were successfully synced</returns>
+        Task<int> SyncOrganization(Guid organizationId, Guid cloudOrganizationId, OrganizationConnection billingSyncConnection);
     }
 
     public interface ICloudSyncSponsorshipsCommand

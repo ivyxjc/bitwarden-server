@@ -18,16 +18,14 @@ namespace Bit.Core.Models.Api.Response.OrganizationSponsorships
                 return;
             }
             SponsorshipsBatch = syncData.SponsorshipsBatch.Select(o => new OrganizationSponsorshipResponseModel(o));
-
         }
 
         public OrganizationSponsorshipSyncData ToOrganizationSponsorshipSync()
         {
             return new OrganizationSponsorshipSyncData()
             {
-                SponsorshipsBatch = SponsorshipsBatch.Select(o => o.ToOrganizationSponsorship())
+                SponsorshipsBatch = SponsorshipsBatch?.Select(o => o.ToOrganizationSponsorship()) ?? Enumerable.Empty<OrganizationSponsorshipData>(),
             };
         }
-
     }
 }

@@ -36,6 +36,12 @@
                                             @TempData["ConnectionError"]
                                         </span>
                                     }
+                                    else if (@TempData["ConnectionWarning"] != null)
+                                    {
+                                        <span class="text-warning">
+                                            @TempData["ConnectionWarning"]
+                                        </span>
+                                    }
                                     else
                                     {
                                         @if(connection.Enabled)

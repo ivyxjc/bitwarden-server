@@ -22,16 +22,12 @@ namespace Bit.Core.OrganizationFeatures.OrganizationSponsorships.FamiliesForEnte
     {
         private readonly IGlobalSettings _globalSettings;
         private readonly IOrganizationSponsorshipRepository _organizationSponsorshipRepository;
-        private readonly IOrganizationUserRepository _organizationUserRepository;
-        private readonly IOrganizationConnectionRepository _organizationConnectionRepository;
 
         public SelfHostedSyncSponsorshipsCommand(
-        IHttpClientFactory httpFactory,
-        IOrganizationSponsorshipRepository organizationSponsorshipRepository,
-        IOrganizationUserRepository organizationUserRepository,
-        IOrganizationConnectionRepository organizationConnectionRepository,
-        IGlobalSettings globalSettings,
-        ILogger<SelfHostedSyncSponsorshipsCommand> logger)
+            IHttpClientFactory httpFactory,
+            IOrganizationSponsorshipRepository organizationSponsorshipRepository,
+            IGlobalSettings globalSettings,
+            ILogger<SelfHostedSyncSponsorshipsCommand> logger)
         : base(
             httpFactory,
             globalSettings.Installation.ApiUri,
@@ -42,12 +38,11 @@ namespace Bit.Core.OrganizationFeatures.OrganizationSponsorships.FamiliesForEnte
             logger)
         {
             _globalSettings = globalSettings;
-            _organizationUserRepository = organizationUserRepository;
             _organizationSponsorshipRepository = organizationSponsorshipRepository;
-            _organizationConnectionRepository = organizationConnectionRepository;
         }
 
-        public async Task SyncOrganization(Guid organizationId, Guid cloudOrganizationId, OrganizationConnection billingSyncConnection)
+        /// <inheritdoc />
+        public async Task<int> SyncOrganization(Guid organizationId, Guid cloudOrganizationId, OrganizationConnection billingSyncConnection)
         {
             if (!_globalSettings.EnableCloudCommunication)
             {
@@ -72,8 +67,10 @@ namespace Bit.Core.OrganizationFeatures.OrganizationSponsorships.FamiliesForEnte
             if (!organizationSponsorshipsDict.Any())
             {
                 _logger.LogInformation($"No existing sponsorships to sync for organization {organizationId}");
-                return;
+                return 0;
             }
+
+            
             var syncedSponsorships = new List<OrganizationSponsorshipData>();
 
             foreach (var orgSponsorshipsBatch in CoreHelpers.Batch(organizationSponsorshipsDict.Values, 1000))
@@ -130,6 +127,8 @@ namespace Bit.Core.OrganizationFeatures.OrganizationSponsorships.FamiliesForEnte
             {
                 await _organizationSponsorshipRepository.UpsertManyAsync(sponsorshipsToUpsert);
             }
+
+            return syncedSponsorships.Count;
         }
 
     }

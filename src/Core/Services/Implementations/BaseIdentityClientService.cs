@@ -69,14 +69,32 @@ namespace Bit.Core.Services
                 Method = method,
                 RequestUri = new Uri(string.Concat(Client.BaseAddress, path))
             };
+            HttpResponseMessage response = null;
             try
             {
-                var response = await Client.SendAsync(message);
+                response = await Client.SendAsync(message);
+                response.EnsureSuccessStatusCode();
                 return await response.Content.ReadFromJsonAsync<TResult>();
+            }
+            catch (HttpRequestException reqEx)
+            {
+                _logger.LogError(12334, reqEx, "Failed to send to {RequestUri}.", message.RequestUri.ToString());
+                if (response != null && _logger.IsEnabled(LogLevel.Information))
+                {
+                    using var jsonResponse = await response.Content.ReadFromJsonAsync<JsonDocument>();
+                    var formattedBadResponse = JsonSerializer.Serialize(jsonResponse, new JsonSerializerOptions
+                    {
+                        WriteIndented = true,
+                    });
+
+                    _logger.LogInformation("Received bad response:\n{BadResponse}", formattedBadResponse);
+                }
+
+                return default;
             }
             catch (Exception e)
             {
-                _logger.LogError(12334, e, "Failed to send to {0}.", message.RequestUri.ToString());
+                _logger.LogError(12334, e, "Failed to send to {RequestUri}.", message.RequestUri.ToString());
                 return default;
             }
         }
