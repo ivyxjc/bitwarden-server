@@ -46,7 +46,7 @@ namespace Bit.Core.Services
             IdentityClient = _httpFactory.CreateClient("identity");
             IdentityClient.BaseAddress = new Uri(baseIdentityServerUri);
             IdentityClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            
+
             badResponseHandler ??= LoggingBadResponseHandlerAsync;
         }
 
