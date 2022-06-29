@@ -88,33 +88,48 @@ namespace Bit.Core.Services
             _logger.LogInformation(Constants.BypassFiltersEventId, null,
                 "Validating licenses for {0} organizations.", enabledOrgs.Count);
 
+            var exceptions = new List<Exception>();
+
             foreach (var org in enabledOrgs)
             {
-                var license = await ReadOrganizationLicenseAsync(org);
-                if (license == null)
+                try
                 {
-                    await DisableOrganizationAsync(org, null, "No license file.");
-                    continue;
-                }
+                    var license = await ReadOrganizationLicenseAsync(org);
+                    if (license == null)
+                    {
+                        await DisableOrganizationAsync(org, null, "No license file.");
+                        continue;
+                    }
 
-                var totalLicensedOrgs = enabledOrgs.Count(o => o.LicenseKey.Equals(license.LicenseKey));
-                if (totalLicensedOrgs > 1)
-                {
-                    await DisableOrganizationAsync(org, license, "Multiple organizations.");
-                    continue;
-                }
+                    var totalLicensedOrgs = enabledOrgs.Count(o => o.LicenseKey.Equals(license.LicenseKey));
+                    if (totalLicensedOrgs > 1)
+                    {
+                        await DisableOrganizationAsync(org, license, "Multiple organizations.");
+                        continue;
+                    }
 
-                if (!license.VerifyData(org, _globalSettings))
-                {
-                    await DisableOrganizationAsync(org, license, "Invalid data.");
-                    continue;
-                }
+                    if (!license.VerifyData(org, _globalSettings))
+                    {
+                        await DisableOrganizationAsync(org, license, "Invalid data.");
+                        continue;
+                    }
 
-                if (!license.VerifySignature(_certificate))
-                {
-                    await DisableOrganizationAsync(org, license, "Invalid signature.");
-                    continue;
+                    if (!license.VerifySignature(_certificate))
+                    {
+                        await DisableOrganizationAsync(org, license, "Invalid signature.");
+                        continue;
+                    }
                 }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Exception while validating organization license by id: {OrganizationId}", org.Id);
+                    exceptions.Add(ex);
+                }
+            }
+
+            if (exceptions.Count > 0)
+            {
+                throw new AggregateException(exceptions);
             }
         }
 

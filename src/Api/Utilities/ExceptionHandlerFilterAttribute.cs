@@ -1,5 +1,6 @@
 ﻿using System;
 using Bit.Api.Models.Public.Response;
+using Bit.Core;
 using Bit.Core.Exceptions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
@@ -100,7 +101,8 @@ namespace Bit.Api.Utilities
             else
             {
                 var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<ExceptionHandlerFilterAttribute>>();
-                logger.LogError(0, exception, exception.Message);
+                logger.LogError(Constants.BypassFiltersEventId, exception,
+                    "An Unhandled Server Error has occurred during request ({RequestPath})", context.HttpContext.Request.Path);
                 errorMessage = "An unhandled server error has occurred.";
                 context.HttpContext.Response.StatusCode = 500;
             }

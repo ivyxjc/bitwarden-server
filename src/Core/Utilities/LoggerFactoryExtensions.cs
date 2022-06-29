@@ -39,26 +39,12 @@ namespace Bit.Core.Utilities
                 return builder;
             }
 
-            bool inclusionPredicate(LogEvent e)
-            {
-                if (filter == null)
-                {
-                    return true;
-                }
-                var eventId = e.Properties.ContainsKey("EventId") ? e.Properties["EventId"].ToString() : null;
-                if (eventId?.Contains(Constants.BypassFiltersEventId.ToString()) ?? false)
-                {
-                    return true;
-                }
-                return filter(e);
-            }
-
             var globalSettings = new GlobalSettings();
             ConfigurationBinder.Bind(context.Configuration.GetSection("GlobalSettings"), globalSettings);
 
             var config = new LoggerConfiguration()
                 .Enrich.FromLogContext()
-                .Filter.ByIncludingOnly(inclusionPredicate);
+                .Filter.ByIncludingOnly((logEvent) => InclusionPredicate(logEvent, filter));
 
             if (CoreHelpers.SettingHasValue(globalSettings?.DocumentDb.Uri) &&
                 CoreHelpers.SettingHasValue(globalSettings?.DocumentDb.Key))
@@ -142,6 +128,22 @@ namespace Bit.Core.Utilities
             builder.AddSerilog(serilog);
 
             return builder;
+        }
+
+        // internal for testing
+        internal static bool InclusionPredicate(LogEvent logEvent, Func<LogEvent, bool> filter)
+        {
+            if (filter == null)
+            {
+                return true;
+            }
+
+            var eventId = logEvent.Properties.ContainsKey("EventId") ? logEvent.Properties["EventId"].ToString() : null;
+            if (eventId?.Contains(Constants.BypassFiltersEventId.ToString()) ?? false)
+            {
+                return true;
+            }
+            return filter(logEvent);
         }
     }
 }

@@ -17,6 +17,7 @@ namespace Bit.Core.Services
         private readonly string _identityScope;
         private readonly string _identityClientId;
         private readonly string _identityClientSecret;
+        private readonly Func<HttpResponseMessage, Task> _badResponseHandler;
         protected readonly ILogger<BaseIdentityClientService> _logger;
 
         private JsonDocument _decodedToken;
@@ -29,7 +30,8 @@ namespace Bit.Core.Services
             string identityScope,
             string identityClientId,
             string identityClientSecret,
-            ILogger<BaseIdentityClientService> logger)
+            ILogger<BaseIdentityClientService> logger,
+            Func<HttpResponseMessage, Task> badResponseHandler = null)
         {
             _httpFactory = httpFactory;
             _identityScope = identityScope;
@@ -44,6 +46,8 @@ namespace Bit.Core.Services
             IdentityClient = _httpFactory.CreateClient("identity");
             IdentityClient.BaseAddress = new Uri(baseIdentityServerUri);
             IdentityClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            
+            badResponseHandler ??= LoggingBadResponseHandlerAsync;
         }
 
         protected HttpClient Client { get; private set; }
@@ -72,6 +76,12 @@ namespace Bit.Core.Services
             try
             {
                 var response = await Client.SendAsync(message);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    await _badResponseHandler?.Invoke(response);
+                }
+
                 return await response.Content.ReadFromJsonAsync<TResult>();
             }
             catch (Exception e)
@@ -133,8 +143,7 @@ namespace Bit.Core.Services
 
                 if (_logger.IsEnabled(LogLevel.Debug))
                 {
-                    var responseBody = await response.Content.ReadAsStringAsync();
-                    _logger.LogDebug("Error response body:\n{ResponseBody}", responseBody);
+                    await LoggingBadResponseHandlerAsync(response);
                 }
 
                 return false;
@@ -144,6 +153,20 @@ namespace Bit.Core.Services
 
             AccessToken = jsonDocument.RootElement.GetProperty("access_token").GetString();
             return true;
+        }
+
+        private async Task LoggingBadResponseHandlerAsync(HttpResponseMessage response)
+        {
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                using var document = await response.Content.ReadFromJsonAsync<JsonDocument>();
+                var formattedJson = JsonSerializer.Serialize(document, new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                });
+                _logger.LogInformation("Received Bad Response ({StatusCode})\n{FormattedJson}",
+                    response.StatusCode, formattedJson);
+            }
         }
 
         protected class TokenHttpRequestMessage : HttpRequestMessage
